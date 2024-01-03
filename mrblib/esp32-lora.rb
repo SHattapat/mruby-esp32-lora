@@ -44,7 +44,7 @@ module LORA
     def read_d
       #for i in 0..2
       puts "#######################"
-      puts "Start System"
+      puts "Start test System"
       puts "#######################"
       sleep 5
       
