@@ -1,5 +1,5 @@
 module LORA
-  puts "LoRa Version....02 "
+  puts "LoRa Version....02 GIT"
   include ESP32::STANDARD
   class LoRa
     def initialize uartnum,rx,tx,baudrate
@@ -93,10 +93,10 @@ module LORA
 
     def send_temp pin,to_address
       puts "Send Temp"
-      for i in 0..20
+      while true
         T = ADC.read_temp pin
         T = T.to_s
-        temp = "Temp "+T
+        temp = "Temp:"+T
         puts temp
         lora_send @uartnum,to_address,temp
         sleep 2
