@@ -40,7 +40,7 @@ mrb_esp32_lora_init(mrb_state *mrb, mrb_value self) {
   mrb_get_args(mrb, "oooo",&uartnum,&rx,&tx, &baudrate);
   //mrb_fixnum(duty)
   printf("INITIAL :  %d %d %d %d\n",mrb_fixnum(uartnum),mrb_fixnum(rx),mrb_fixnum(tx),mrb_fixnum(baudrate));
-  static const char *TAG = "LORA MASTER";
+  //static const char *TAG = "LORA MASTER";
   const uart_config_t uart_config = {
         .baud_rate = mrb_fixnum(baudrate),
         .data_bits = UART_DATA_8_BITS,
@@ -173,7 +173,7 @@ mrb_esp32_lora_send(mrb_state *mrb, mrb_value self) {
 }
 
 static mrb_value
-mrb_esp32_lora_set_parameter(mrb_state *mrb, mrb_value self) {
+mrb_esp32_lora_set_parameter_mode(mrb_state *mrb, mrb_value self) {
   mrb_value uartnum,cmode;
   char *mode = "";
   mrb_get_args(mrb, "oo" ,&uartnum,&cmode);
@@ -196,6 +196,26 @@ mrb_esp32_lora_set_parameter(mrb_state *mrb, mrb_value self) {
   vTaskDelay(pdMS_TO_TICKS(500 * 2));
 
   printf("Set CMODE: %s",command_data_cmode);
+  return mrb_nil_value();
+}
+
+static mrb_value
+mrb_esp32_lora_set_parameter(mrb_state *mrb, mrb_value self) {
+  mrb_value uartnum;
+  char *param;
+  mrb_get_args(mrb, "oz" ,&uartnum,&param);
+
+
+  //AT+PARAMETER=10,7,1,7
+  char command_data_param[300] = "";
+  char command_param[] = "AT+PARAMETER=";
+  char end_of_line[] = "\r\n";
+  
+  snprintf(command_data_param,200,"%s%s%s",command_param,param,end_of_line);
+  uart_write_bytes(mrb_fixnum(uartnum), (const char *)command_data_param, strlen(command_data_param));
+  vTaskDelay(pdMS_TO_TICKS(500 * 2));
+
+  printf("Set CMODE: %s",command_data_param);
   return mrb_nil_value();
 }
 
@@ -313,7 +333,8 @@ mrb_esp32_lora_gem_init(mrb_state* mrb)
   // lora funtion other setup
   mrb_define_module_function(mrb, c, "lora_set_band",mrb_esp32_lora_set_band, MRB_ARGS_REQ(2));
   mrb_define_module_function(mrb, c, "lora_set_cpin",mrb_esp32_lora_set_cpin, MRB_ARGS_REQ(2));
-  mrb_define_module_function(mrb, c, "lora_set_cmode",mrb_esp32_lora_set_parameter, MRB_ARGS_REQ(2));
+  mrb_define_module_function(mrb, c, "lora_set_param",mrb_esp32_lora_set_parameter, MRB_ARGS_REQ(2));
+  mrb_define_module_function(mrb, c, "lora_set_cmode",mrb_esp32_lora_set_parameter_mode, MRB_ARGS_REQ(2));
 
   // lora comunication funtion setup
   mrb_define_module_function(mrb, c, "lora_send", mrb_esp32_lora_send, MRB_ARGS_REQ(3));

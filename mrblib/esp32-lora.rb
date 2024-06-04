@@ -1,6 +1,11 @@
 module LORA
-  puts "LoRa Version....02 GIT"
+  puts "LoRa Version....03 GIT"
+
   include ESP32::STANDARD
+  include ESP32WIFI
+  include ESP32MQTT
+  #include ESP32UART
+
   class LoRa
     def initialize uartnum,rx,tx,baudrate
       # o = LoRa.new NUM_2,25,26,115200
@@ -31,14 +36,18 @@ module LORA
     end
 
     def read 
-      #o.send 1,"ON"
-      #o.send 2,"ON"
       lora_read @uartnum
+      data = lora_read @uartnum
+      return data
     end
 
     def set_cmode cmode
       #o.set_cmode MODE_1
       lora_set_cmode @uartnum,cmode
+    end
+
+    def set_param param
+      lora_set_param @uartnum,param
     end
 
     def read_d
@@ -75,19 +84,95 @@ module LORA
 
     end
 
+    def init_system_wifi
+      w = WiFi.new
+      w.wifi_connect "n302mesh","n302pw8879"
+      sleep 3
+    end
+
+    def init_system_mqtt
+      m = MQTT.new "192.168.1.14",1883
+      m.mqtt_connect
+      sleep 1
+    end
+
     def observe_mode pin
-      puts "test observe_mode"
+      puts "test observe_mode_wifi_mqtt"
+      sleep 1
+      #ESP32WIFI::init_wifi
+      #ESP32WIFI::connect "TP-Link_6EA8_5G","22429735"
+
+      #w = WiFi.new
+      #w.wifi_connect "TP-Link_6EA8_5G","22429735"
+      #sleep 1
+      m = MQTT.new "192.168.0.210",1883
+      m.mqtt_connect
+      sleep 1
+
+
+
       x = GPIO.high_at? pin
       while x == false
         x = GPIO.high_at? pin
         data_r = lora_read @uartnum
+        #data_r = data_r.to_s
+        if data_r != "Emtry data"
+          begin
+            puts "LoRa read : #{data_r}"
+            Sun,Temp,Sl,Sr = data_r.split("|",-1) 
+            
+            _,sun_num = Sun.split(":",-1) 
+            sun_p = ((sun_num.to_f / 3.2) * 100).round(2)
+            puts "light intensity : #{sun_p} %"
+            #puts sun_p
+
+            _,temp_num = Temp.split(':', -1) 
+            temp_num = (temp_num.to_f - 0.4)/0.0195 # Temperature Coefficient mV/°C old -> 0.01295 0.01195
+            temp_num  = temp_num.round(2)
+            puts "Temperature : #{temp_num}°C"
+            #puts temp_num
+
+            _,sl_num = Sl.split(':', -1)
+            #sl_p = (100-((sl_num.to_f / 2.75) * 100)).round(2)
+            sl_p = (100-(((sl_num.to_f-0.9)/(2.75-0.9))*100)).round(2)
+            #puts sl_num
+            puts "Soil moisture value sensor 1: #{sl_p} %"
+            #puts sl_p
+
+            _,sr_num = Sr.split(':', -1)
+            #sr_p = (100-((sr_num.to_f / 3) * 100)).round(2)
+            sr_p = (100-(((sr_num.to_f-0.9)/(2.75-0.9))*100)).round(2)
+            puts "Soil moisture value sensor 2 : #{sr_p} %"
+            #puts sr_p
+
+            m.mqtt_publish "node3/sun",sun_p.to_s
+            m.mqtt_publish "node3/temp",temp_num.to_s
+            m.mqtt_publish "node3/soilL",sl_p.to_s
+            m.mqtt_publish "node3/soilR",sr_p.to_s
+            puts "########################################################################"
+
+          rescue # optionally: `rescue StandardError => ex`
+            puts 'Msg error'
+        
+          end
+          
+        elsif x == true
+          puts "Stop !!!"
+          puts x
+          #sleep 1
+          break
+        end
+
+        sleep 2
+      end
+    end
+
+    def observe_mode2 
+      puts "test observe_mode2"
+      while true
+        data_r = lora_read @uartnum
         puts data_r
         sleep 1
-        if x == true
-          puts x
-          sleep 1
-          break
-         end
       end
     end
 
